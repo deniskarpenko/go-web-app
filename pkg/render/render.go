@@ -6,38 +6,53 @@ import (
 	"log"
 	"net/http"
 	"path/filepath"
+
+	"github.com/deniskarpenko/go-web-app/pkg/config"
+	"github.com/deniskarpenko/go-web-app/pkg/models"
 )
 
+var app *config.AppConfig
+
+// NewTemplates sets the config for the tempate package
+func NewTemplates(a *config.AppConfig) {
+	app = a
+}
+
+func AddDefaultData(td *models.TemplateData) *models.TemplateData {
+
+	return td
+}
+
 // RenderTemplate renders a template
-func RenderTemplate(w http.ResponseWriter, tmpl string) {
-	//create a template cashe
-	tc, err := createTemplateCache()
-	if err != nil {
-		log.Fatal(err)
+func RenderTemplate(w http.ResponseWriter, tmpl string, td *models.TemplateData) {
+	var tc map[string]*template.Template
+	if app.UseCache {
+		//get the template cache from the app
+		tc = app.TemplateCache
+	} else {
+		tc, _ = CreateTemplateCache()
 	}
 
 	//get requested from cache
 	t, ok := tc[tmpl]
 	if !ok {
-		log.Fatal(err)
+		log.Fatal("Could not get template cache")
 	}
 
 	buf := new(bytes.Buffer)
 
-	err = t.Execute(buf, nil)
+	td = AddDefaultData(td)
 
-	if err != nil {
-		log.Println(err)
-	}
+	_ = t.Execute(buf, td)
 
 	//render the template
-	_, err = buf.WriteTo(w)
+	_, err := buf.WriteTo(w)
 	if err != nil {
 		log.Println(err)
 	}
 }
 
-func createTemplateCache() (map[string]*template.Template, error) {
+func CreateTemplateCache() (map[string]*template.Template, error) {
 	myCache := map[string]*template.Template{}
 
 	//get all of the files named page.html from ./templates
